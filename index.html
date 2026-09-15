@@ -1,0 +1,2333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#f7f4ef">
+  <title>Score Everywhere</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    :root {
+      --ink: #202321;
+      --muted: #70736f;
+      --line: #e5e3dd;
+      --paper: #fffefa;
+      --canvas: #f7f4ef;
+      --accent: #315d50;
+      --accent-dark: #24483e;
+      --accent-soft: #e6f0eb;
+      --danger-soft: #fcebea;
+      --danger: #b54742;
+      --shadow: 0 16px 40px rgba(43, 48, 43, 0.08);
+    }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display",
+        "SF Pro Text", "Segoe UI", sans-serif;
+      background: var(--canvas);
+      color: var(--ink);
+      min-height: 100vh;
+    }
+
+    .app {
+      width: 100%;
+      max-width: 560px;
+      margin: 0 auto;
+      padding: 38px 20px 48px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(30px, 7vw, 40px);
+      line-height: 1.15;
+      letter-spacing: -0.03em;
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 23px;
+      line-height: 1.2;
+      letter-spacing: -0.02em;
+    }
+
+    h3 {
+      margin: 0;
+      font-size: 18px;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      margin: 0;
+      line-height: 1.45;
+    }
+
+    .card {
+      background: var(--paper);
+      border: 1px solid rgba(229, 227, 221, 0.8);
+      border-radius: 18px;
+      padding: 22px;
+      margin-bottom: 16px;
+      box-shadow: var(--shadow);
+    }
+
+    label {
+      display: block;
+    }
+
+    .label-text {
+      display: block;
+      font-size: 14px;
+      color: var(--muted);
+      margin-bottom: 6px;
+      font-weight: 650;
+    }
+
+    input {
+      width: 100%;
+      min-height: 52px;
+      border: 1.5px solid #d9d8d2;
+      border-radius: 12px;
+      padding: 0 14px;
+      font-size: 17px;
+      background: #fff;
+      color: var(--ink);
+      outline: none;
+      transition: border-color 160ms ease, box-shadow 160ms ease;
+    }
+
+    input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(49, 93, 80, 0.12);
+    }
+
+    select {
+      width: 100%;
+      min-height: 52px;
+      border: 1.5px solid #d9d8d2;
+      border-radius: 12px;
+      padding: 0 14px;
+      font-size: 17px;
+      background: #fff;
+      color: var(--ink);
+      outline: none;
+    }
+
+    select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(49, 93, 80, 0.12);
+    }
+
+    .player-input {
+      margin-bottom: 12px;
+    }
+
+    #playerInputs {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0 12px;
+    }
+
+    button {
+      width: 100%;
+      min-height: 52px;
+      border: 0;
+      border-radius: 12px;
+      padding: 10px 16px;
+      font-size: 17px;
+      font-weight: 650;
+      cursor: pointer;
+      margin-top: 10px;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    button:disabled {
+      opacity: 0.45;
+      cursor: default;
+    }
+
+    .primary {
+      background: var(--accent);
+      color: #fff;
+      box-shadow: 0 7px 14px rgba(49, 93, 80, 0.18);
+      transition: background 160ms ease, transform 160ms ease;
+    }
+
+    button:not(:disabled):hover {
+      background: var(--accent-dark);
+    }
+
+    button:not(:disabled):active {
+      transform: translateY(1px);
+    }
+
+    .secondary {
+      background: #eeece7;
+      color: var(--ink);
+      box-shadow: none;
+    }
+
+    .danger {
+      background: var(--danger);
+      color: #fff;
+      box-shadow: 0 7px 14px rgba(181, 71, 66, 0.18);
+    }
+
+    .danger:not(:disabled):hover {
+      background: #963a36;
+    }
+
+    .round-header {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .round-number {
+      font-size: 14px;
+      color: var(--muted);
+      margin-bottom: 4px;
+      font-weight: 600;
+    }
+
+    .score-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 120px;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .player-name {
+      font-size: 18px;
+      font-weight: 650;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .score-input {
+      width: 100%;
+      min-height: 56px;
+      text-align: right;
+      font-size: 20px;
+      font-weight: 600;
+      appearance: textfield;
+      -moz-appearance: textfield;
+    }
+
+    .score-input::-webkit-inner-spin-button,
+    .score-input::-webkit-outer-spin-button {
+      margin: 0;
+      -webkit-appearance: none;
+    }
+
+    .score-input::placeholder {
+      color: #aaa;
+    }
+
+    .message {
+      color: #c62828;
+      font-size: 14px;
+      margin-top: 10px;
+      min-height: 20px;
+      line-height: 1.4;
+    }
+
+    .success-message {
+      color: var(--accent);
+    }
+
+    .total-row,
+    .final-score {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      min-height: 48px;
+      padding: 10px 0;
+      border-bottom: 1px solid #eee;
+    }
+
+    .total-row:last-child,
+    .final-score:last-child {
+      border-bottom: 0;
+    }
+
+    .positive {
+      color: #16803c;
+      font-weight: 750;
+    }
+
+    .negative {
+      color: var(--danger);
+      font-weight: 650;
+    }
+
+    .history-round {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 14px;
+      margin-bottom: 10px;
+    }
+
+    .history-round:last-child {
+      margin-bottom: 0;
+    }
+
+    .history-round-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .history-winner {
+      font-size: 13px;
+      color: var(--accent);
+      font-weight: 650;
+      text-align: right;
+    }
+
+    .history-score {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 6px 0;
+      font-size: 14px;
+    }
+
+    .history-score span:first-child {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .empty {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    .final-winner {
+      padding: 8px 0 16px;
+      margin-bottom: 4px;
+      border-bottom: 1px solid var(--line);
+      font-size: 20px;
+      font-weight: 750;
+    }
+
+    .table-wrap {
+      width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    table {
+      width: 100%;
+      min-width: 620px;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    th,
+    td {
+      padding: 11px 9px;
+      border-bottom: 1px solid var(--line);
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    th:first-child,
+    td:first-child {
+      text-align: left;
+    }
+
+    th {
+      font-weight: 700;
+      color: #555;
+    }
+
+    .round-badge {
+      display: inline-block;
+      background: var(--accent-soft);
+      color: var(--accent-dark);
+      padding: 6px 9px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 650;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+    /* ============================================================
+   ERROR SCREEN
+   ============================================================ */
+
+.error-title {
+  color: var(--danger);
+  margin-bottom: 8px;
+}
+
+.error-card {
+  margin-top: 24px;
+}
+
+.error-score-note {
+  margin-bottom: 16px;
+}
+
+.error-score-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  padding: 10px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.error-score-row:last-child {
+  border-bottom: 0;
+}
+
+.error-score-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.error-score-value {
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+    #savedGameStep {
+      padding-bottom: 18px;
+      margin-bottom: 18px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    @media (max-width: 480px) {
+      .app {
+        padding: 24px 14px 36px;
+      }
+
+      .card {
+        padding: 18px;
+      }
+
+      #playerInputs {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 380px) {
+      .app {
+        padding-left: 14px;
+        padding-right: 14px;
+      }
+
+      .score-row {
+        grid-template-columns: minmax(0, 1fr) 105px;
+        gap: 8px;
+      }
+
+      .player-name {
+        font-size: 16px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <main class="app">
+
+    <!-- SETUP -->
+    <section id="setupScreen">
+      <h1>🎴 Score Everywhere</h1>
+
+      <p class="subtitle" style="margin-bottom: 24px;">
+        Choose your players · Up to 40 rounds
+      </p>
+
+      <div class="card">
+
+        <!-- SAVED GAME -->
+        <div id="savedGameStep" class="hidden">
+          <h2>Continue current game?</h2>
+
+          <p id="savedGameSummary"
+             class="subtitle"
+             style="margin: 6px 0 18px;">
+          </p>
+
+          <button id="continueGameButton"
+                  type="button"
+                  class="primary">
+            Continue Game
+          </button>
+
+          <button id="discardSavedGameButton"
+                  type="button"
+                  class="secondary">
+            Start New Game
+          </button>
+        </div>
+
+        <!-- PLAYER COUNT -->
+        <div id="playerCountStep">
+
+          <h2>How many players?</h2>
+
+          <p class="subtitle" style="margin: 6px 0 18px;">
+            Choose between 2 and 10 players for this game.
+          </p>
+
+          <label>
+            <span class="label-text">Number of players</span>
+
+            <select id="playerCount">
+              <option value="2">2 players</option>
+              <option value="3">3 players</option>
+              <option value="4">4 players</option>
+              <option value="5">5 players</option>
+              <option value="6" selected>6 players</option>
+              <option value="7">7 players</option>
+              <option value="8">8 players</option>
+              <option value="9">9 players</option>
+              <option value="10">10 players</option>
+            </select>
+          </label>
+
+          <button id="continueButton"
+                  type="button"
+                  class="primary">
+            Continue
+          </button>
+
+        </div>
+
+        <!-- PLAYER NAMES -->
+        <div id="playerNamesStep" class="hidden">
+
+          <h2>Player names</h2>
+
+          <p class="subtitle" style="margin: 6px 0 18px;">
+            Enter a name for each player.
+          </p>
+
+          <div id="playerInputs"></div>
+
+          <div id="setupMessage"
+               class="message"
+               aria-live="polite">
+          </div>
+
+          <button id="startButton"
+                  type="button"
+                  class="primary">
+            Start Game
+          </button>
+
+        </div>
+
+      </div>
+    </section>
+
+
+    <!-- GAME -->
+    <section id="gameScreen" class="hidden">
+
+      <div class="round-header">
+        <div>
+          <div id="roundLabel" class="round-number"></div>
+          <h2>Enter Scores</h2>
+        </div>
+      </div>
+
+      <div class="card">
+
+        <p class="subtitle" style="margin-bottom: 20px;">
+          Enter the players who lost points. Leave the winner's box empty.
+          The winner's positive score is calculated only when you add the round.
+        </p>
+
+        <div id="scoreInputs"></div>
+
+        <div id="scoreMessage"
+             class="message"
+             aria-live="polite">
+        </div>
+
+        <button id="addRoundButton"
+                type="button"
+                class="primary">
+          Add Round
+        </button>
+
+      </div>
+
+
+      <!-- TOTALS -->
+      <div class="card">
+        <h3>Totals</h3>
+        <div id="currentTotals"></div>
+      </div>
+
+
+      <!-- END GAME -->
+      <button id="endGameButton"
+              type="button"
+              class="danger">
+        End Game
+      </button>
+
+
+      <!-- HISTORY -->
+      <div class="card">
+
+        <div class="round-header" style="margin-bottom: 12px;">
+          <h3>Round History</h3>
+
+          <span id="historyCount"
+                class="round-badge">
+            0 rounds
+          </span>
+        </div>
+
+        <div id="historyEmpty"
+             class="empty">
+          Added rounds will appear here.
+        </div>
+
+        <div id="roundHistory"></div>
+
+      </div>
+
+    </section>
+
+
+    <!-- FINAL -->
+    <section id="finalScreen" class="hidden">
+
+      <h1>🏆 Game Over</h1>
+
+      <p class="subtitle" style="margin-bottom: 20px;">
+        Final scores after
+        <span id="finalRoundCount">0</span>
+        rounds
+      </p>
+
+
+      <div class="card">
+
+        <div id="finalWinner"
+             class="final-winner">
+        </div>
+
+        <div id="finalScores"></div>
+
+      </div>
+
+
+      <div class="card">
+
+        <h3 style="margin-bottom: 14px;">
+          Round-by-Round Scores
+        </h3>
+
+        <div class="table-wrap">
+
+          <table>
+
+            <thead id="historyTableHead"></thead>
+
+            <tbody id="historyTableBody"></tbody>
+
+          </table>
+
+        </div>
+
+      </div>
+
+
+      <button id="newGameButton"
+              type="button"
+              class="primary">
+        New Game
+      </button>
+
+    </section>
+    <!-- ERROR -->
+    <section id="errorScreen" class="hidden">
+
+      <h1 class="error-title">
+        Sorry, something went wrong.
+      </h1>
+
+      <p class="subtitle">
+        Your game data has been kept as safely as possible.
+        These are the current scores we were able to recover.
+      </p>
+
+      <div class="card error-card">
+
+        <h3 style="margin-bottom: 8px;">
+          Current Scores
+        </h3>
+
+        <p class="subtitle error-score-note">
+          Completed rounds:
+          <span id="errorRoundCount">0</span>
+        </p>
+
+        <div id="errorScores"></div>
+
+      </div>
+
+      <button id="errorNewGameButton"
+              type="button"
+              class="primary">
+        Start New Game
+      </button>
+
+    </section>
+
+  </main>
+
+
+  <script>
+    (() => {
+      "use strict";
+
+
+      /*
+       * ============================================================
+       * GAME CONFIGURATION
+       * ============================================================
+       */
+
+      const MAX_ROUNDS = 40;
+
+      /*
+       * This is the key used to store the current game on the phone.
+       * localStorage survives:
+       * - closing the app
+       * - closing Safari
+       * - restarting the phone
+       * - turning the phone completely off
+       */
+      const SAVE_KEY = "score-everywhere-current-game";
+
+
+      /*
+       * ============================================================
+       * GAME STATE
+       * ============================================================
+       */
+
+      let playerCount = 6;
+      let players = [];
+      let rounds = [];
+
+
+      /*
+       * ============================================================
+       * DOM REFERENCES
+       * ============================================================
+       */
+
+      const setupScreen =
+        document.getElementById("setupScreen");
+
+      const gameScreen =
+        document.getElementById("gameScreen");
+
+      const finalScreen =
+        document.getElementById("finalScreen");
+
+      const errorScreen =
+        document.getElementById("errorScreen");
+
+
+      const playerInputs =
+        document.getElementById("playerInputs");
+
+      const scoreInputs =
+        document.getElementById("scoreInputs");
+
+      const playerCountSelect =
+        document.getElementById("playerCount");
+
+      const playerCountStep =
+        document.getElementById("playerCountStep");
+
+      const playerNamesStep =
+        document.getElementById("playerNamesStep");
+
+
+      const savedGameStep =
+        document.getElementById("savedGameStep");
+
+      const savedGameSummary =
+        document.getElementById("savedGameSummary");
+
+      const continueGameButton =
+        document.getElementById("continueGameButton");
+
+      const discardSavedGameButton =
+        document.getElementById("discardSavedGameButton");
+
+
+      const setupMessage =
+        document.getElementById("setupMessage");
+
+      const scoreMessage =
+        document.getElementById("scoreMessage");
+
+
+      const currentTotals =
+        document.getElementById("currentTotals");
+
+      const roundHistory =
+        document.getElementById("roundHistory");
+
+      const historyEmpty =
+        document.getElementById("historyEmpty");
+
+      const historyCount =
+        document.getElementById("historyCount");
+
+
+      const roundLabel =
+        document.getElementById("roundLabel");
+
+      const addRoundButton =
+        document.getElementById("addRoundButton");
+
+
+      /*
+       * ============================================================
+       * STORAGE
+       * ============================================================
+       */
+
+      function saveGame() {
+
+        if (!players.length) {
+          return;
+        }
+
+        const game = {
+          playerCount: playerCount,
+          players: players,
+          rounds: rounds
+        };
+
+        try {
+
+          localStorage.setItem(
+            SAVE_KEY,
+            JSON.stringify(game)
+          );
+
+        } catch (error) {
+
+          console.error(
+            "Could not save game:",
+            error
+          );
+
+        }
+      }
+
+
+      function loadSavedGame() {
+
+        try {
+
+          const raw =
+            localStorage.getItem(SAVE_KEY);
+
+          if (!raw) {
+            return null;
+          }
+
+
+          const game =
+            JSON.parse(raw);
+
+
+          /*
+           * Basic validation prevents corrupted or invalid
+           * localStorage data from breaking the application.
+           */
+
+          if (
+            !game ||
+            !Number.isInteger(game.playerCount) ||
+            game.playerCount < 2 ||
+            game.playerCount > 10 ||
+            !Array.isArray(game.players) ||
+            game.players.length !== game.playerCount ||
+            !Array.isArray(game.rounds) ||
+            game.rounds.length > MAX_ROUNDS
+          ) {
+
+            localStorage.removeItem(SAVE_KEY);
+
+            return null;
+          }
+
+
+          return game;
+
+        } catch (error) {
+
+          console.error(
+            "Could not load saved game:",
+            error
+          );
+
+          localStorage.removeItem(SAVE_KEY);
+
+          return null;
+        }
+      }
+
+
+      function clearSavedGame() {
+
+        try {
+
+          localStorage.removeItem(
+            SAVE_KEY
+          );
+
+        } catch (error) {
+
+          console.error(
+            "Could not clear saved game:",
+            error
+          );
+
+        }
+      }
+
+      /*
+ * ============================================================
+ * EMERGENCY ERROR SCREEN
+ * ============================================================
+ */
+
+let errorScreenShown = false;
+
+function showErrorScreen(error) {
+
+  /*
+   * Prevent multiple errors from repeatedly
+   * rebuilding the error screen.
+   */
+
+  if (errorScreenShown) {
+    return;
+  }
+
+  errorScreenShown = true;
+
+
+  /*
+   * Log the technical error for debugging.
+   * The user doesn't need to see the technical details.
+   */
+
+  console.error(
+    "Unexpected application error:",
+    error
+  );
+
+
+  /*
+   * Hide all normal screens.
+   */
+
+  try {
+    setupScreen.classList.add("hidden");
+  } catch (_) {}
+
+  try {
+    gameScreen.classList.add("hidden");
+  } catch (_) {}
+
+  try {
+    finalScreen.classList.add("hidden");
+  } catch (_) {}
+
+
+  /*
+   * Show the error screen.
+   */
+
+  try {
+    errorScreen.classList.remove("hidden");
+  } catch (_) {
+    return;
+  }
+
+
+  const errorScores =
+    document.getElementById("errorScores");
+
+  const errorRoundCount =
+    document.getElementById("errorRoundCount");
+
+
+  if (!errorScores || !errorRoundCount) {
+    return;
+  }
+
+
+  /*
+   * Show number of completed rounds.
+   */
+
+  errorRoundCount.textContent =
+    Array.isArray(rounds)
+      ? rounds.length
+      : "unknown";
+
+
+  errorScores.innerHTML = "";
+
+
+  /*
+   * Safely calculate the scores directly from
+   * players + rounds.
+   *
+   * We intentionally DON'T call calculateTotals()
+   * because that function itself might be the thing
+   * that caused the error.
+   */
+
+  if (
+    Array.isArray(players) &&
+    Array.isArray(rounds) &&
+    players.length > 0
+  ) {
+
+    players.forEach(
+      (player, playerIndex) => {
+
+        let total = 0;
+
+
+        rounds.forEach(
+          round => {
+
+            if (
+              round &&
+              Array.isArray(round.scores) &&
+              typeof round.scores[playerIndex] === "number"
+            ) {
+
+              total +=
+                round.scores[playerIndex];
+            }
+
+          }
+        );
+
+
+        const row =
+          document.createElement("div");
+
+        row.className =
+          "error-score-row";
+
+
+        const name =
+          document.createElement("span");
+
+        name.className =
+          "error-score-name";
+
+        name.textContent =
+          String(player);
+
+
+        const score =
+          document.createElement("span");
+
+        score.className =
+          "error-score-value " +
+          (
+            total >= 0
+              ? "positive"
+              : "negative"
+          );
+
+        score.textContent =
+          total > 0
+            ? `+${total}`
+            : `${total}`;
+
+
+        row.appendChild(name);
+
+        row.appendChild(score);
+
+        errorScores.appendChild(row);
+
+      }
+    );
+
+  } else {
+
+    const message =
+      document.createElement("p");
+
+    message.className =
+      "empty";
+
+    message.textContent =
+      "No complete scores could be recovered.";
+
+    errorScores.appendChild(message);
+  }
+}
+
+
+      /*
+       * ============================================================
+       * SAVED GAME STARTUP
+       * ============================================================
+       */
+
+      function showSavedGameOption() {
+
+        const savedGame =
+          loadSavedGame();
+
+
+        /*
+         * No saved game exists.
+         * Show normal new-game setup.
+         */
+
+        if (
+          !savedGame ||
+          savedGame.rounds.length === 0
+        ) {
+
+          savedGameStep.classList.add("hidden");
+
+          playerCountStep.classList.remove("hidden");
+
+          return;
+        }
+
+
+        /*
+         * A game exists.
+         * Give the user the option to continue it.
+         */
+
+        savedGameSummary.textContent =
+          `${savedGame.playerCount} players · ` +
+          `${savedGame.rounds.length} ` +
+          `round${savedGame.rounds.length === 1 ? "" : "s"} completed`;
+
+
+        savedGameStep.classList.remove("hidden");
+
+        playerCountStep.classList.add("hidden");
+
+        playerNamesStep.classList.add("hidden");
+      }
+
+
+      /*
+       * ============================================================
+       * CONTINUE SAVED GAME
+       * ============================================================
+       */
+
+      function continueSavedGame() {
+
+        const savedGame =
+          loadSavedGame();
+
+
+        if (!savedGame) {
+
+          showSavedGameOption();
+
+          return;
+        }
+
+
+        /*
+         * Restore the complete game state.
+         */
+
+        playerCount =
+          savedGame.playerCount;
+
+        players =
+          savedGame.players;
+
+        rounds =
+          savedGame.rounds;
+
+
+        setupScreen.classList.add("hidden");
+
+        finalScreen.classList.add("hidden");
+
+        gameScreen.classList.remove("hidden");
+
+
+        renderGame();
+
+
+        /*
+         * Put the cursor into the first score box
+         * for the next round.
+         */
+
+        if (rounds.length < MAX_ROUNDS) {
+
+          const firstInput =
+            scoreInputs.querySelector(".score-input");
+
+          if (firstInput) {
+            firstInput.focus();
+          }
+        }
+      }
+
+
+      /*
+       * ============================================================
+       * START FRESH GAME
+       * ============================================================
+       */
+
+      function startFreshGame() {
+
+        clearSavedGame();
+
+        players = [];
+        rounds = [];
+
+
+        savedGameStep.classList.add("hidden");
+
+        playerNamesStep.classList.add("hidden");
+
+        playerCountStep.classList.remove("hidden");
+
+
+        setupMessage.textContent = "";
+      }
+
+
+      /*
+       * ============================================================
+       * PLAYER INPUTS
+       * ============================================================
+       */
+
+      function buildPlayerInputs() {
+
+        playerInputs.innerHTML = "";
+
+
+        for (let i = 0; i < playerCount; i++) {
+
+          const wrapper =
+            document.createElement("div");
+
+          wrapper.className =
+            "player-input";
+
+
+          wrapper.innerHTML = `
+            <label>
+              <span class="label-text">
+                Player ${i + 1}
+              </span>
+
+              <input
+                id="player-${i}"
+                type="text"
+                maxlength="30"
+                autocomplete="off"
+                placeholder="Player ${i + 1}"
+              >
+            </label>
+          `;
+
+
+          playerInputs.appendChild(wrapper);
+        }
+      }
+
+
+      /*
+       * ============================================================
+       * CHOOSE PLAYER COUNT
+       * ============================================================
+       */
+
+      function choosePlayerCount() {
+
+        playerCount =
+          Number(playerCountSelect.value);
+
+
+        buildPlayerInputs();
+
+
+        setupMessage.textContent = "";
+
+
+        playerCountStep.classList.add("hidden");
+
+        playerNamesStep.classList.remove("hidden");
+
+
+        const firstInput =
+          playerInputs.querySelector("input");
+
+
+        if (firstInput) {
+          firstInput.focus();
+        }
+      }
+
+
+      /*
+       * ============================================================
+       * START GAME
+       * ============================================================
+       */
+
+      function startGame() {
+
+        setupMessage.textContent = "";
+
+
+        const enteredNames = [];
+
+
+        for (let i = 0; i < playerCount; i++) {
+
+          const input =
+            document.getElementById(`player-${i}`);
+
+          const name =
+            input.value.trim();
+
+
+          if (!name) {
+
+            setupMessage.textContent =
+              `Please enter all ${playerCount} player names.`;
+
+            input.focus();
+
+            return;
+          }
+
+
+          enteredNames.push(name);
+        }
+
+
+        /*
+         * Player names must be unique.
+         */
+
+        const normalizedNames =
+          enteredNames.map(name =>
+            name.toLowerCase()
+          );
+
+
+        if (
+          new Set(normalizedNames).size !== playerCount
+        ) {
+
+          setupMessage.textContent =
+            "Player names must be unique.";
+
+          return;
+        }
+
+
+        players = enteredNames;
+
+        rounds = [];
+
+
+        /*
+         * Save immediately.
+         *
+         * This protects the player names even if the phone
+         * is turned off before Round 1 is entered.
+         */
+
+        saveGame();
+
+
+        setupScreen.classList.add("hidden");
+
+        finalScreen.classList.add("hidden");
+
+        gameScreen.classList.remove("hidden");
+
+
+        renderGame();
+      }
+
+
+      /*
+       * ============================================================
+       * RENDER GAME
+       * ============================================================
+       */
+
+      function renderGame() {
+
+        const nextRound =
+          rounds.length + 1;
+
+
+        roundLabel.textContent =
+          nextRound <= MAX_ROUNDS
+            ? `ROUND ${nextRound} OF ${MAX_ROUNDS}`
+            : `${MAX_ROUNDS} ROUNDS COMPLETE`;
+
+
+        scoreMessage.textContent = "";
+
+
+        renderScoreInputs();
+
+        renderTotals();
+
+        renderRoundHistory();
+
+
+        if (rounds.length >= MAX_ROUNDS) {
+
+          addRoundButton.disabled = true;
+
+          addRoundButton.textContent =
+            "40 Rounds Reached";
+
+        } else {
+
+          addRoundButton.disabled = false;
+
+          addRoundButton.textContent =
+            "Add Round";
+        }
+      }
+
+
+      /*
+       * ============================================================
+       * SCORE INPUTS
+       * ============================================================
+       */
+
+      function renderScoreInputs() {
+
+        scoreInputs.innerHTML = "";
+
+
+        players.forEach((player, index) => {
+
+          const row =
+            document.createElement("div");
+
+          row.className =
+            "score-row";
+
+
+          /*
+           * Player name is escaped because it is inserted
+           * into HTML.
+           */
+
+          row.innerHTML = `
+            <div class="player-name">
+              ${escapeHtml(player)}
+            </div>
+
+            <input
+              type="number"
+              inputmode="numeric"
+              min="0"
+              step="1"
+              placeholder="—"
+              class="score-input"
+              data-player-index="${index}"
+            >
+          `;
+
+
+          scoreInputs.appendChild(row);
+
+
+          const input =
+            row.querySelector(".score-input");
+
+
+          /*
+           * Prevent mouse-wheel scrolling from accidentally
+           * changing a score on desktop.
+           */
+
+          input.addEventListener(
+            "wheel",
+            event => event.preventDefault(),
+            { passive: false }
+          );
+
+
+          /*
+           * Set aria-label as a DOM property rather than
+           * injecting the player name into an HTML attribute.
+           */
+
+          input.setAttribute(
+            "aria-label",
+            `Points lost by ${player}`
+          );
+        });
+      }
+
+
+      /*
+       * ============================================================
+       * ESCAPE HTML
+       * ============================================================
+       */
+
+      function escapeHtml(value) {
+
+        const div =
+          document.createElement("div");
+
+        div.textContent =
+          value;
+
+        return div.innerHTML;
+      }
+
+
+      /*
+       * ============================================================
+       * SCORE FORMATTING
+       * ============================================================
+       */
+
+      function formatScore(value) {
+
+        return value > 0
+          ? `+${value}`
+          : `${value}`;
+      }
+
+
+      function scoreClass(value) {
+
+        return value >= 0
+          ? "positive"
+          : "negative";
+      }
+
+
+      /*
+       * ============================================================
+       * ADD ROUND
+       * ============================================================
+       */
+
+      function addRound() {
+
+        scoreMessage.textContent = "";
+
+
+        if (rounds.length >= MAX_ROUNDS) {
+
+          scoreMessage.textContent =
+            "You have reached the maximum of 40 rounds.";
+
+          return;
+        }
+
+
+        const inputs =
+          Array.from(
+            scoreInputs.querySelectorAll(".score-input")
+          );
+
+
+        const filledInputs =
+          inputs.filter(
+            input =>
+              input.value.trim() !== ""
+          );
+
+
+        /*
+         * Exactly one player must be blank.
+         */
+
+        if (
+          filledInputs.length !== playerCount - 1
+        ) {
+
+          scoreMessage.textContent =
+            `Enter scores for exactly ` +
+            `${playerCount - 1} players. ` +
+            `Leave exactly 1 player blank.`;
+
+          return;
+        }
+
+
+        const scores = [];
+
+        let totalLost = 0;
+
+        let missingIndex = -1;
+
+
+        for (
+          let i = 0;
+          i < inputs.length;
+          i++
+        ) {
+
+          const rawValue =
+            inputs[i].value.trim();
+
+
+          /*
+           * Blank box = winner.
+           */
+
+          if (rawValue === "") {
+
+            scores.push(null);
+
+            missingIndex = i;
+
+            continue;
+          }
+
+
+          const number =
+            Number(rawValue);
+
+
+          /*
+           * Scores cannot be negative.
+           */
+
+          if (
+            !Number.isFinite(number) ||
+            number < 0
+          ) {
+
+            scoreMessage.textContent =
+              "Scores must be 0 or a positive whole number.";
+
+            inputs[i].focus();
+
+            return;
+          }
+
+
+          /*
+           * Scores must be integers.
+           */
+
+          if (!Number.isInteger(number)) {
+
+            scoreMessage.textContent =
+              "Scores must be whole numbers.";
+
+            inputs[i].focus();
+
+            return;
+          }
+
+
+          /*
+           * User enters 34.
+           * We store -34.
+           */
+
+          scores.push(-number);
+
+
+          totalLost += number;
+        }
+
+
+        /*
+         * Safety check.
+         */
+
+        if (missingIndex === -1) {
+
+          scoreMessage.textContent =
+            "Leave exactly one player's score blank.";
+
+          return;
+        }
+
+
+        /*
+         * Winner receives the sum of the absolute values
+         * of all losing scores.
+         *
+         * IMPORTANT:
+         * This is NOT placed into the input box.
+         */
+
+        scores[missingIndex] =
+          totalLost;
+
+
+        rounds.push({
+          scores: scores,
+          winnerIndex: missingIndex
+        });
+
+
+        /*
+         * CRITICAL PERSISTENCE STEP
+         *
+         * The game is saved immediately after the round
+         * is successfully added.
+         */
+
+        saveGame();
+
+
+        renderGame();
+
+
+        /*
+         * Focus first score box for the next round.
+         */
+
+        if (rounds.length < MAX_ROUNDS) {
+
+          const firstInput =
+            scoreInputs.querySelector(".score-input");
+
+          if (firstInput) {
+            firstInput.focus();
+          }
+        }
+      }
+
+
+      /*
+       * ============================================================
+       * CALCULATE TOTALS
+       * ============================================================
+       */
+
+      function calculateTotals() {
+
+        return players.map(
+          (_, playerIndex) => {
+
+            return rounds.reduce(
+              (total, round) => {
+
+                return (
+                  total +
+                  round.scores[playerIndex]
+                );
+
+              },
+              0
+            );
+          }
+        );
+      }
+
+
+      /*
+       * ============================================================
+       * RENDER TOTALS
+       * ============================================================
+       */
+
+      function renderTotals() {
+
+        const totals =
+          calculateTotals();
+
+
+        currentTotals.innerHTML = "";
+
+
+        players.forEach(
+          (player, index) => {
+
+            const row =
+              document.createElement("div");
+
+            row.className =
+              "total-row";
+
+
+            row.innerHTML = `
+              <span>
+                ${escapeHtml(player)}
+              </span>
+
+              <span class="${scoreClass(totals[index])}">
+                ${formatScore(totals[index])}
+              </span>
+            `;
+
+
+            currentTotals.appendChild(row);
+          }
+        );
+      }
+
+
+      /*
+       * ============================================================
+       * ROUND HISTORY
+       * ============================================================
+       */
+
+      function renderRoundHistory() {
+
+        roundHistory.innerHTML = "";
+
+
+        historyCount.textContent =
+          `${rounds.length} ` +
+          `round${rounds.length === 1 ? "" : "s"}`;
+
+
+        historyEmpty.classList.toggle(
+          "hidden",
+          rounds.length > 0
+        );
+
+
+        rounds.forEach(
+          (round, roundIndex) => {
+
+            const card =
+              document.createElement("div");
+
+            card.className =
+              "history-round";
+
+
+            let html = `
+              <div class="history-round-header">
+
+                <strong>
+                  Round ${roundIndex + 1}
+                </strong>
+
+                <span class="history-winner">
+                  Winner:
+                  ${escapeHtml(
+                    players[round.winnerIndex]
+                  )}
+                </span>
+
+              </div>
+            `;
+
+
+            players.forEach(
+              (player, playerIndex) => {
+
+                const score =
+                  round.scores[playerIndex];
+
+
+                html += `
+                  <div class="history-score">
+
+                    <span>
+                      ${escapeHtml(player)}
+                    </span>
+
+                    <span class="${scoreClass(score)}">
+                      ${formatScore(score)}
+                    </span>
+
+                  </div>
+                `;
+              }
+            );
+
+
+            card.innerHTML =
+              html;
+
+
+            roundHistory.appendChild(card);
+          }
+        );
+      }
+
+
+      /*
+       * ============================================================
+       * END GAME
+       * ============================================================
+       */
+
+      function endGame() {
+
+        if (rounds.length === 0) {
+
+          scoreMessage.textContent =
+            "Add at least one round before ending the game.";
+
+          return;
+        }
+
+
+        renderFinalScreen();
+
+
+        /*
+         * The game is now finished.
+         *
+         * Remove it from the "unfinished game" storage so
+         * reopening the app does not offer to continue it.
+         */
+
+        clearSavedGame();
+
+
+        gameScreen.classList.add("hidden");
+
+        finalScreen.classList.remove("hidden");
+      }
+
+
+      /*
+       * ============================================================
+       * FINAL SCREEN
+       * ============================================================
+       */
+
+      function renderFinalScreen() {
+
+        const totals =
+          calculateTotals();
+
+
+        const ranking =
+          players
+            .map(
+              (name, index) => ({
+                name: name,
+                score: totals[index],
+                index: index
+              })
+            )
+            .sort(
+              (a, b) =>
+                b.score - a.score
+            );
+
+
+        document.getElementById(
+          "finalRoundCount"
+        ).textContent =
+          rounds.length;
+
+
+        const winner =
+          ranking[0];
+
+
+        document.getElementById(
+          "finalWinner"
+        ).innerHTML = `
+          🥇
+          ${escapeHtml(winner.name)}
+
+          <span class="${scoreClass(winner.score)}">
+            ${formatScore(winner.score)}
+          </span>
+        `;
+
+
+        const finalScoresElement =
+          document.getElementById(
+            "finalScores"
+          );
+
+
+        finalScoresElement.innerHTML = "";
+
+
+        ranking.forEach(
+          (player, rank) => {
+
+            const row =
+              document.createElement("div");
+
+            row.className =
+              "final-score";
+
+
+            row.innerHTML = `
+              <span>
+                ${rank + 1}.
+                ${escapeHtml(player.name)}
+              </span>
+
+              <span class="${scoreClass(player.score)}">
+                ${formatScore(player.score)}
+              </span>
+            `;
+
+
+            finalScoresElement.appendChild(row);
+          }
+        );
+
+
+        renderHistoryTable();
+      }
+
+
+      /*
+       * ============================================================
+       * FINAL HISTORY TABLE
+       * ============================================================
+       */
+
+      function renderHistoryTable() {
+
+        const tableHead =
+          document.getElementById(
+            "historyTableHead"
+          );
+
+
+        const tableBody =
+          document.getElementById(
+            "historyTableBody"
+          );
+
+
+        tableHead.innerHTML = "";
+
+        tableBody.innerHTML = "";
+
+
+        const headerRow =
+          document.createElement("tr");
+
+
+        headerRow.innerHTML =
+          `<th>Round</th>` +
+
+          players
+            .map(
+              player =>
+                `<th>${escapeHtml(player)}</th>`
+            )
+            .join("");
+
+
+        tableHead.appendChild(
+          headerRow
+        );
+
+
+        rounds.forEach(
+          (round, roundIndex) => {
+
+            const row =
+              document.createElement("tr");
+
+
+            row.innerHTML =
+              `<td>Round ${roundIndex + 1}</td>` +
+
+              round.scores
+                .map(
+                  score =>
+                    `<td class="${scoreClass(score)}">
+                      ${formatScore(score)}
+                    </td>`
+                )
+                .join("");
+
+
+            tableBody.appendChild(row);
+          }
+        );
+      }
+
+
+      /*
+       * ============================================================
+       * NEW GAME
+       * ============================================================
+       */
+
+      function newGame() {
+
+        /*
+         * Explicitly remove the saved game.
+         */
+
+        clearSavedGame();
+
+
+        playerCount = 6;
+
+        players = [];
+
+        rounds = [];
+
+
+        finalScreen.classList.add("hidden");
+
+        gameScreen.classList.add("hidden");
+
+        setupScreen.classList.remove("hidden");
+
+
+        setupMessage.textContent = "";
+
+
+        playerCountSelect.value = "6";
+
+
+        savedGameStep.classList.add("hidden");
+
+        playerCountStep.classList.remove("hidden");
+
+        playerNamesStep.classList.add("hidden");
+
+
+        buildPlayerInputs();
+      }
+
+
+      /*
+       * ============================================================
+       * EVENT LISTENERS
+       * ============================================================
+       */
+
+      document
+        .getElementById("continueButton")
+        .addEventListener(
+          "click",
+          choosePlayerCount
+        );
+
+
+      document
+        .getElementById("startButton")
+        .addEventListener(
+          "click",
+          startGame
+        );
+
+
+      continueGameButton
+        .addEventListener(
+          "click",
+          continueSavedGame
+        );
+
+
+      discardSavedGameButton
+        .addEventListener(
+          "click",
+          startFreshGame
+        );
+
+
+      document
+        .getElementById("addRoundButton")
+        .addEventListener(
+          "click",
+          addRound
+        );
+
+
+      document
+        .getElementById("endGameButton")
+        .addEventListener(
+          "click",
+          endGame
+        );
+
+
+      document
+        .getElementById("newGameButton")
+        .addEventListener(
+          "click",
+          newGame
+        );
+
+
+      /*
+ * ============================================================
+ * GLOBAL ERROR CATCHING
+ * ============================================================
+ */
+
+window.addEventListener(
+  "error",
+  event => {
+    showErrorScreen(
+      event.error || event.message
+    );
+  }
+);
+
+
+window.addEventListener(
+  "unhandledrejection",
+  event => {
+    showErrorScreen(
+      event.reason
+    );
+  }
+);
+
+document
+  .getElementById("errorNewGameButton")
+  .addEventListener(
+    "click",
+    () => {
+
+      /*
+       * Reset error state.
+       */
+
+      errorScreenShown = false;
+
+
+      /*
+       * Delete the saved game.
+       */
+
+      clearSavedGame();
+
+
+      /*
+       * Reset game state.
+       */
+
+      playerCount = 6;
+
+      players = [];
+
+      rounds = [];
+
+
+      /*
+       * Hide error screen.
+       */
+
+      errorScreen.classList.add(
+        "hidden"
+      );
+
+
+      /*
+       * Return to normal setup.
+       */
+
+      finalScreen.classList.add(
+        "hidden"
+      );
+
+      gameScreen.classList.add(
+        "hidden"
+      );
+
+      setupScreen.classList.remove(
+        "hidden"
+      );
+
+
+      setupMessage.textContent = "";
+
+
+      playerCountSelect.value = "6";
+
+
+      savedGameStep.classList.add(
+        "hidden"
+      );
+
+      playerCountStep.classList.remove(
+        "hidden"
+      );
+
+      playerNamesStep.classList.add(
+        "hidden"
+      );
+
+
+      buildPlayerInputs();
+
+    }
+  );
+      /*
+       * ============================================================
+       * APP STARTUP
+       * ============================================================
+       */
+
+      buildPlayerInputs();
+
+      /*
+       * Check whether an unfinished game was saved from
+       * a previous session / phone shutdown.
+       */
+
+      showSavedGameOption();
+
+    })();
+  </script>
+
+</body>
+</html>
