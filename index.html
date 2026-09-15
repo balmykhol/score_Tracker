@@ -311,6 +311,47 @@
       white-space: nowrap;
     }
 
+    .history-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .history-actions button {
+      flex: 1;
+      min-height: 42px;
+      margin-top: 0;
+      font-size: 14px;
+    }
+
+    .history-edit {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--line);
+    }
+
+    .history-edit .score-row {
+      margin-bottom: 8px;
+    }
+
+    .history-edit .score-input {
+      min-height: 46px;
+      font-size: 17px;
+    }
+
+    .history-edit-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .history-edit-actions button {
+      flex: 1;
+      min-height: 44px;
+      margin-top: 4px;
+      font-size: 14px;
+    }
+
+
     .empty {
       color: var(--muted);
       font-size: 14px;
@@ -598,6 +639,9 @@
 
         <div class="round-header" style="margin-bottom: 12px;">
           <h3>Round History</h3>
+            <p class="subtitle" style="margin: 4px 0 0; font-size: 13px;">
+              Edit here.
+            </p>
 
           <span id="historyCount"
                 class="round-badge">
@@ -848,7 +892,90 @@
             error
           );
 
+          showErrorScreen(error);
+          throw error;
+
         }
+      }
+
+
+      function validateSavedGame(game) {
+
+        if (
+          !game ||
+          !Number.isInteger(game.playerCount) ||
+          game.playerCount < 2 ||
+          game.playerCount > 10 ||
+          !Array.isArray(game.players) ||
+          game.players.length !== game.playerCount ||
+          game.players.some(
+            player =>
+              typeof player !== "string" ||
+              player.trim() === ""
+          ) ||
+          !Array.isArray(game.rounds) ||
+          game.rounds.length > MAX_ROUNDS
+        ) {
+          return false;
+        }
+
+        const normalizedNames =
+          game.players.map(
+            player => player.toLowerCase()
+          );
+
+        if (
+          new Set(normalizedNames).size !==
+          game.playerCount
+        ) {
+          return false;
+        }
+
+        return game.rounds.every(round => {
+
+          if (
+            !round ||
+            !Array.isArray(round.scores) ||
+            round.scores.length !== game.playerCount ||
+            !Number.isInteger(round.winnerIndex) ||
+            round.winnerIndex < 0 ||
+            round.winnerIndex >= game.playerCount
+          ) {
+            return false;
+          }
+
+          let sum = 0;
+
+          for (
+            let i = 0;
+            i < round.scores.length;
+            i++
+          ) {
+
+            const score =
+              round.scores[i];
+
+            if (
+              typeof score !== "number" ||
+              !Number.isFinite(score) ||
+              !Number.isInteger(score)
+            ) {
+              return false;
+            }
+
+            if (
+              i === round.winnerIndex
+                ? score < 0
+                : score > 0
+            ) {
+              return false;
+            }
+
+            sum += score;
+          }
+
+          return sum === 0;
+        });
       }
 
 
@@ -863,32 +990,17 @@
             return null;
           }
 
-
           const game =
             JSON.parse(raw);
 
+          if (!validateSavedGame(game)) {
 
-          /*
-           * Basic validation prevents corrupted or invalid
-           * localStorage data from breaking the application.
-           */
-
-          if (
-            !game ||
-            !Number.isInteger(game.playerCount) ||
-            game.playerCount < 2 ||
-            game.playerCount > 10 ||
-            !Array.isArray(game.players) ||
-            game.players.length !== game.playerCount ||
-            !Array.isArray(game.rounds) ||
-            game.rounds.length > MAX_ROUNDS
-          ) {
-
-            localStorage.removeItem(SAVE_KEY);
+            showErrorScreen(
+              new Error("Saved game data is invalid.")
+            );
 
             return null;
           }
-
 
           return game;
 
@@ -899,12 +1011,11 @@
             error
           );
 
-          localStorage.removeItem(SAVE_KEY);
+          showErrorScreen(error);
 
           return null;
         }
       }
-
 
       function clearSavedGame() {
 
@@ -914,6 +1025,8 @@
             SAVE_KEY
           );
 
+          return true;
+
         } catch (error) {
 
           console.error(
@@ -921,6 +1034,9 @@
             error
           );
 
+          showErrorScreen(error);
+
+          return false;
         }
       }
 
@@ -1118,6 +1234,10 @@ function showErrorScreen(error) {
         const savedGame =
           loadSavedGame();
 
+        if (errorScreenShown) {
+          return;
+        }
+
 
         /*
          * No saved game exists.
@@ -1170,7 +1290,9 @@ function showErrorScreen(error) {
 
         if (!savedGame) {
 
-          showSavedGameOption();
+          if (!errorScreenShown) {
+            showSavedGameOption();
+          }
 
           return;
         }
@@ -1225,7 +1347,9 @@ function showErrorScreen(error) {
 
       function startFreshGame() {
 
-        clearSavedGame();
+        if (!clearSavedGame()) {
+          return;
+        }
 
         players = [];
         rounds = [];
@@ -1830,17 +1954,14 @@ function showErrorScreen(error) {
 
         roundHistory.innerHTML = "";
 
-
         historyCount.textContent =
           `${rounds.length} ` +
           `round${rounds.length === 1 ? "" : "s"}`;
-
 
         historyEmpty.classList.toggle(
           "hidden",
           rounds.length > 0
         );
-
 
         rounds.forEach(
           (round, roundIndex) => {
@@ -1851,52 +1972,11 @@ function showErrorScreen(error) {
             card.className =
               "history-round";
 
-
-            let html = `
-              <div class="history-round-header">
-
-                <strong>
-                  Round ${roundIndex + 1}
-                </strong>
-
-                <span class="history-winner">
-                  Winner:
-                  ${escapeHtml(
-                    players[round.winnerIndex]
-                  )}
-                </span>
-
-              </div>
-            `;
-
-
-            players.forEach(
-              (player, playerIndex) => {
-
-                const score =
-                  round.scores[playerIndex];
-
-
-                html += `
-                  <div class="history-score">
-
-                    <span>
-                      ${escapeHtml(player)}
-                    </span>
-
-                    <span class="${scoreClass(score)}">
-                      ${formatScore(score)}
-                    </span>
-
-                  </div>
-                `;
-              }
+            renderHistoryRoundCard(
+              card,
+              round,
+              roundIndex
             );
-
-
-            card.innerHTML =
-              html;
-
 
             roundHistory.appendChild(card);
           }
@@ -1905,6 +1985,302 @@ function showErrorScreen(error) {
 
 
       /*
+       * Build one history card.
+       */
+
+      function renderHistoryRoundCard(
+        card,
+        round,
+        roundIndex
+      ) {
+
+        let html = `
+          <div class="history-round-header">
+
+            <strong>
+              Round ${roundIndex + 1}
+            </strong>
+
+            <span class="history-winner">
+              Winner:
+              ${escapeHtml(
+                players[round.winnerIndex]
+              )}
+            </span>
+
+          </div>
+        `;
+
+        players.forEach(
+          (player, playerIndex) => {
+
+            const score =
+              round.scores[playerIndex];
+
+            html += `
+              <div class="history-score">
+
+                <span>
+                  ${escapeHtml(player)}
+                </span>
+
+                <span class="${scoreClass(score)}">
+                  ${formatScore(score)}
+                </span>
+
+              </div>
+            `;
+          }
+        );
+
+        html += `
+          <div class="history-actions">
+            <button
+              type="button"
+              class="secondary edit-round-button">
+              Edit Round
+            </button>
+          </div>
+        `;
+
+        card.innerHTML = html;
+
+        card
+          .querySelector(".edit-round-button")
+          .addEventListener(
+            "click",
+            () => editRound(roundIndex)
+          );
+      }
+
+
+      /*
+       * Edit any previously completed round.
+       */
+
+      function editRound(roundIndex) {
+
+        const round =
+          rounds[roundIndex];
+
+        const card =
+          roundHistory.children[roundIndex];
+
+        if (!round || !card) {
+          return;
+        }
+
+        let html = `
+          <div class="history-round-header">
+
+            <strong>
+              Edit Round ${roundIndex + 1}
+            </strong>
+
+            <span class="history-winner">
+              Leave exactly one box blank
+            </span>
+
+          </div>
+
+          <div class="history-edit">
+        `;
+
+        players.forEach(
+          (player, playerIndex) => {
+
+            const isWinner =
+              playerIndex === round.winnerIndex;
+
+            const value =
+              isWinner
+                ? ""
+                : Math.abs(
+                    Number(
+                      round.scores[playerIndex]
+                    )
+                  );
+
+            html += `
+              <div class="score-row">
+
+                <div class="player-name">
+                  ${escapeHtml(player)}
+                </div>
+
+                <input
+                  type="number"
+                  inputmode="numeric"
+                  min="0"
+                  step="1"
+                  placeholder="${isWinner ? "Winner" : "Points lost"}"
+                  class="score-input edit-score-input"
+                  data-player-index="${playerIndex}"
+                  value="${value}"
+                >
+
+              </div>
+            `;
+          }
+        );
+
+        html += `
+            <div
+              class="message edit-round-message"
+              aria-live="polite">
+            </div>
+
+            <div class="history-edit-actions">
+
+              <button
+                type="button"
+                class="secondary cancel-edit-button">
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                class="primary save-edit-button">
+                Save Changes
+              </button>
+
+            </div>
+
+          </div>
+        `;
+
+        card.innerHTML = html;
+
+        card
+          .querySelector(".cancel-edit-button")
+          .addEventListener(
+            "click",
+            renderRoundHistory
+          );
+
+        card
+          .querySelector(".save-edit-button")
+          .addEventListener(
+            "click",
+            () => saveEditedRound(roundIndex)
+          );
+      }
+
+
+      /*
+       * Save an edited round using exactly the same scoring
+       * rules as Add Round.
+       */
+
+      function saveEditedRound(roundIndex) {
+
+        const card =
+          roundHistory.children[roundIndex];
+
+        if (!card) {
+          return;
+        }
+
+        const inputs =
+          Array.from(
+            card.querySelectorAll(".edit-score-input")
+          );
+
+        const message =
+          card.querySelector(".edit-round-message");
+
+        const filledInputs =
+          inputs.filter(
+            input =>
+              input.value.trim() !== ""
+          );
+
+        if (
+          filledInputs.length !== playerCount - 1
+        ) {
+
+          message.textContent =
+            `Enter scores for exactly ` +
+            `${playerCount - 1} players. ` +
+            `Leave exactly 1 player blank.`;
+
+          return;
+        }
+
+        const newScores = [];
+        let totalLost = 0;
+        let winnerIndex = -1;
+
+        for (
+          let i = 0;
+          i < inputs.length;
+          i++
+        ) {
+
+          const rawValue =
+            inputs[i].value.trim();
+
+          if (rawValue === "") {
+
+            newScores.push(null);
+            winnerIndex = i;
+
+            continue;
+          }
+
+          const number =
+            Number(rawValue);
+
+          if (
+            !Number.isFinite(number) ||
+            number < 0
+          ) {
+
+            message.textContent =
+              "Scores must be 0 or a positive whole number.";
+
+            inputs[i].focus();
+
+            return;
+          }
+
+          if (!Number.isInteger(number)) {
+
+            message.textContent =
+              "Scores must be whole numbers.";
+
+            inputs[i].focus();
+
+            return;
+          }
+
+          newScores.push(-number);
+          totalLost += number;
+        }
+
+        if (winnerIndex === -1) {
+
+          message.textContent =
+            "Leave exactly one player's score blank.";
+
+          return;
+        }
+
+        newScores[winnerIndex] =
+          totalLost;
+
+        rounds[roundIndex] = {
+          scores: newScores,
+          winnerIndex: winnerIndex
+        };
+
+        saveGame();
+
+        renderGame();
+      }
+
+
+            /*
        * ============================================================
        * END GAME
        * ============================================================
@@ -1931,7 +2307,9 @@ function showErrorScreen(error) {
          * reopening the app does not offer to continue it.
          */
 
-        clearSavedGame();
+        if (!clearSavedGame()) {
+          return;
+        }
 
 
         gameScreen.classList.add("hidden");
@@ -2112,7 +2490,9 @@ function showErrorScreen(error) {
          * Explicitly remove the saved game.
          */
 
-        clearSavedGame();
+        if (!clearSavedGame()) {
+          return;
+        }
 
 
         playerCount = 6;
@@ -2238,17 +2618,20 @@ document
     () => {
 
       /*
+       * Delete the saved game before leaving
+       * the emergency screen.
+       */
+
+      if (!clearSavedGame()) {
+        return;
+      }
+
+
+      /*
        * Reset error state.
        */
 
       errorScreenShown = false;
-
-
-      /*
-       * Delete the saved game.
-       */
-
-      clearSavedGame();
 
 
       /*
